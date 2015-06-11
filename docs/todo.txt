@@ -1,0 +1,10 @@
+TODO
+
+1. Write functions to translate date strings into human - readable dates
+2. Rename get.py to something more specific
+3a. Fetch team name (http://api.football-data.org/alpha/teams/86) first in get.py and pass this 
+    in to teamParser as a parameter to the constructor
+3b. Print team name based off new parameter
+
+4. Maybe setup MongoDb?
+5. Set up project in gitlab and sourcetree

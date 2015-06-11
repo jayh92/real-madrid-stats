@@ -1,0 +1,453 @@
+football-data.org API Documentation
+
+Daniel Freitag
+<Daniel@football-data.org>
+2014-01-18
+Table of Contents
+Changelog
+Changes from beta to alpha
+Vocabulary
+Technical wording
+Domain wording
+Other conventions
+Requesting a Resource
+Available resources
+Soccerseason
+Team
+Fixtures
+CORS handling
+Errors
+HTTP error codes returned
+Appendix
+Table of League-Codes
+Endpoint: http://api.football-data.org/alpha/ 
+
+
+This guide provides the full documentation of the football-data API. If you just want to get started and get a taste of the API I recommend to have a look at the table on the main page that shows all resources, how to request them and the filters they accept. If you want to understand the API in depth then this guide is for you, as I also try to point out design decisions and explain why the API ticks like it does.
+
+Changelog
+
+Changes from beta to alpha
+If you want to migrate your client from beta to alpha version, take care of the following:
+
+The subdomain of the main entry point changed from "www" to "api" and the base URI now reads: http://api.football-data.org
+
+Change your implementation to use the version number (alpha) ahead of each resource, e.g. http://api.football-data.org/alpha/soccerseasons/
+
+Rename your authentication header from Auth-Token to X-Auth-Token
+
+The Fixture-Resource received a major refactoring to be future-safe. Several attributes of the JSON-object moved to subnodes, so be sure to check here for the new structure and adapt your client accordingly.
+
+The Ranking-Subresource changed it’s URI to now read e.g.: http://api.football-data.org/alpha/soccerseasons/354/leagueTable. A bummer I’m not an english native, otherwise I had named it like that before, but anyway. New versions allow for breaking changes and that’s one. Check out the new structure of the response here
+
+The list representations of each resource now hold a HAL-styled _link-node, which serves you with linked resources and thus enables you to navigate through the API easily. The list itself is typically inside a node that is named like the collection, so you probably have to adapt your parsers.
+
+That’s enough to get your client up and running with the alpha version. Other differences that do not affect clients are in short (and more detailed in the next sections):
+
+More data. Not only the current seasons but data back to 2005 is now available. I also added the Champions League (which is available in beta as well)
+
+More attributes. A lot of the returned objects contain more data, e.g. the fixture resource contains a head2head comparism.
+
+Fixed bugs, I hope you did not face one though ;)
+
+Vocabulary
+
+Technical wording
+Basically I use the terms Main Resource, Subresource and Filter to describe the API design. They are abstract “things” that can be combined in various combinations and forms to retrieve the data you need.
+
+Main Resources are main building blocks of the API and most likely also appear as entities in clients' applications. Subresources on the other hand generally don’t make sense without the Main Resource they are based on. You can also think of that a Main Resource actually is composed of Subresources. However often there are good arguments to justify one or the other design to be right. Trying to offer a flexible API you will see some “things” appear as both.
+Last but not least there are Filters to narrow down result sets. A Filter always describes an attribute and it’s value must be passed in an adequate format which is declared by a Data Type. I usually describe these Data types using a loose regex-dialect which one could call prototype-regex. There’s no ruleset for that dialect, but I think it’s a pragmatic way and everyone that has a basic understanding of regex will understand the notation.
+
+Domain wording
+A Soccerseason represents a particular season of a football league, so for example the running competition of the Premiere League is a Soccerseason. A Soccerseason belongs to a specific League which is defined by a two or three-letter-code. (click here for a complete listing) and consists of Matchdays that hold a number of scheduled games, named Fixtures. A certain number of Teams participate in a Soccerseason.
+Note that I omitted to implement Matchday as a hierarchical element by purpose. It’s just an attribute of Fixture because I think this is more intuitive and separation can be achieved by using a Filter. In tournamenets like the Champions League a matchday represents the round of the last 16, the semi-final as well, so be sure to adapt your frontend accordingly ;)
+
+Other conventions
+URI, resources and subresources are all written lower case. Filters on the other hand use camelCase instead. All resources are only accessible using their plural, thus a resource always responds with the list representation, adding an id to the endpoint gives access to one particular resource.
+
+All objects are preceded by a _links-node, that holds linked resources that you can use to easily traverse the API in the browser. In list representations you typically find a node count that shows the number of results.
+
+Concerning the data, I try to consolidate team or league names to be english but as this project was born out of a private project much of the data is still in german.
+
+Please implement smart requests and always try to think about a good tradeoff between payload and the number of requests. Please don’t write loops to crawl resources from id 0 to id 1000, first find out which ids are callable at all. To prevent the API from unnecessary load it is throttled. Authenticated users are allowed for 50 requests per minute, hence 3000 requests the hour. If you need more requests, contact me as it’s possible to losen this ruleset by authentication token. Non-authenticated users are only allowed for 50 requests at all.
+
+Requesting a Resource
+
+At the moment the football-data API only makes use of the HTTP GET method. That means you can use your webbrowser to use the API, to humanize the responses and make them readable you should install a plugin (mentioned on the API main page) that beautifies JSON output. You can also use wget, curl or Powershell to fetch resources, depending on your platform. Way more elegant are browser plugins like Postman for Chrome that give you a history and an easy way to define HTTP Headers. Google around to find tons of tutorials from beginner to expert on how to use these tools with RESTful APIs.
+
+However, if after your first touches you think this API could fit your needs you will likely want to implement the API in your favourite programming language. Again there are tons of libraries and plugins that ease implementing RESTful APIs. I personally can recommend Guzzle for PHP, Jersey for Java and wslite for Groovy. But most probably you already got your favorite REST library at hand.
+
+You append Filters as HTTP query string. That’s done by suffixing a question mark to the URI and appending the Filters (that is: filterName=value). For instance, using the Matchday Filter is done like so:
+
+GET http://api.football-data.org/alpha/soccerseason/354/?matchday=2
+If you want to use more than one Filter, separate them by an ampersand between them. Read more about query definition on wikipedia.
+
+Available resources
+
+Soccerseason
+This resource is a good entry point. Request this resource to find out which data is available. An example object looks as follows:
+
+Example call:
+
+GET http://api.football-data.org/alpha/soccerseasons/354
+Example response:
+
+{
+   "_links": {
+       "self": { "href": "http://api.football-data.org/alpha/soccerseasons/354" },
+       "teams": { "href": "http://api.football-data.org/alpha/soccerseasons/teams" },
+       "fixtures": { "href": "http://api.football-data.org/alpha/soccerseasons/fixtures" },
+       "leagueTable": { "href": "http://api.football-data.org/alpha/soccerseasons/leagueTable" }
+   },
+   "caption": "Premier League 2014/15",
+   "league": "PL",
+   "year": "2014",
+   "numberOfTeams": 20,
+   "numberOfGames": 380,
+   "lastUpdated": "2014-12-21T10:47:43Z"
+}
+You can filter this resource by adding a season-Filter to the URI to read like this:
+
+http://api.football-data.org/alpha/soccerseasons/?season=2012
+The season-filter defaults to 2014 hence shows all available leagues of the current season. There is no way of pulling all available soccerseasons with one call at the moment.
+
+Sub-Resources of Soccerseason
+
+There are 3 Subresources of a Soccerseason, named Team, Fixture and Ranking
+
+Team
+By calling the Team Subresource you get a list representation of all football teams participating in this particular soccerseason.
+
+Example call:
+
+GET http://api.football-data.org/alpha/soccerseasons/355/teams
+You cannot apply any filter to that Subresource. You can find the structure of the team object here.
+
+Fixtures
+Calling the Fixture Subresource, you get a list of all fixtures for that particular soccerseason.
+
+Example call:
+
+GET http://api.football-data.org/alpha/soccerseasons/356/fixtures
+You can apply the matchday filter, to narrow the result set down to a particular matchday. Omitting the filter returns all matchdays and thus fixtures for that soccerseason. Click here to see how a fixture object looks like.
+
+LeagueTable
+This resource is a representation of the (current) standing of a league table for a particular soccerseason.
+
+Example call:
+
+GET http://api.football-data.org/alpha/soccerseasons/357/leagueTable
+Example response (abbreviated):
+
+ "_links": {
+        "self": "http://api.football-data.org/alpha/soccerseasons/357/leagueTable?matchday=16",
+        "soccerseason": "http://api.football-data.org/alpha/soccerseasons/357"
+ }
+ "leagueCaption": "Serie A 2014/15",
+ "matchday": 18,
+ "standing": [
+{
+    "_links": {
+        "team": { "href": "http://api.football-data.org/alpha/teams/109" }
+    },
+    "position": 1,
+    "teamName": "Juventus Turin",
+    "playedGames": 18,
+    "points": 43,
+    "goals": 38,
+    "goalsAgainst": 9,
+    "goalDifference": 29
+ }
+ {
+    "_links": {
+        "team": { "href": "http://api.football-data.org/alpha/teams/100" }
+    },
+    "position": 2,
+    "teamName": "AS Rom",
+    "playedGames": 18,
+    "points": 40,
+    "goals": 31,
+    "goalsAgainst": 13,
+    "goalDifference": 18
+ }
+The response defaults to the current matchday, but you can specify the matchday filter as well and call former standings. Calling a matchday in the future doesn’t make much sense and will return the standing of the last genuine matchday.
+
+Team
+A Team is also implemented as a Main Resource. See the example response to know how a representation object looks like.
+
+Example call:
+
+GET http://api.football-data.org/teams/19
+Example response:
+
+{
+   "_links": {
+     "self": { "href": "http://api.football-data.org/alpha/teams/19" },
+     "fixtures": { "href": "http://api.football-data.org/alpha/teams/19/fixtures" },
+     "players": { "href": "http://api.football-data.org/alpha/teams/19/players" }
+   },
+   "name": "Eintracht Frankfurt",
+   "code": "SGE",
+   "shortName": "Eintr. Frankfurt",
+   "squadMarketValue": "75.475.000 ?",
+   "crestUrl": "http://upload.wikimedia.org/wikipedia/commons/0/04/Eintracht_Frankfurt_Logo.svg"
+}
+Sub-Resources of Team
+
+Fixtures
+By adding the Subresource Fixture to the Team resource, you can access fixtures of this particular team. There is a season filter that defaults to the current season, but can also be set manually:
+
+GET http://api.football-data.org/teams/6/fixtures/?season=2012
+Besides you are able to make use of the timeFrame filter to easily request the upcoming matches in the next week like so:
+
+GET http://api.football-data.org/teams/19/fixtures/?timeFrame=n7
+And finally you can add the venue-Filter to only show games of the specified venue, meaning home- or away games, for instance:
+
+GET http://api.football-data.org/teams/6/fixtures/?timeFrame=n14&venue=home
+Players
+Firing a GET request on the Player Subresource you get a list of all players playing for that team including detailed information.
+
+Example request:
+
+GET http://api.football-data.org/alpha/teams/19/players
+Example response (abbreviated):
+
+{
+  "_links": {
+    "_self": { "href": "http://api.football-data.org/alpha/teams/19/players" },
+    "team": { "href": "http://api.football-data.org/alpha/teams/19" }
+   },
+   "count": 31,
+   "players": [
+       {
+           "name": "Kevin Trapp",
+           "position": "Keeper",
+           "jerseryNumber": 1,
+           "dateOfBirth": "1990-07-08",
+           "nationality": "Germany",
+           "contractUntil": "2016-06-30",
+           "marketValue": "8,000,000 &euro;"
+       },
+       {
+           "name": "Felix Wiedwald",
+           "position": "Keeper",
+           "jerseryNumber": 30,
+           "dateOfBirth": "1990-03-15",
+           "nationality": "Germany",
+           "contractUntil": "2015-06-30",
+           "marketValue": "1,000,000 &euro;"
+       },
+       [...]
+   ]
+}
+Fixtures
+The Fixture resource reflects a scheduled football game. A fixture typically belongs to a soccer season and is played on a certain matchday.
+
+Example call:
+
+GET http://api.football-data.org/alpha/fixtures/133566
+Example response:
+
+ fixture:": {
+        "_links": {
+            "self": {
+                "href": "http://api.football-data.org/alpha/fixtures/133566"
+            },
+            "soccerseason": {
+                "href": "http://api.football-data.org/alpha/soccerseasons/347"
+            },
+            "homeTeam": {
+                "href": "http://api.football-data.org/alpha/teams/556"
+            },
+            "awayTeam": {
+                "href": "http://api.football-data.org/alpha/teams/514"
+            }
+        },
+        "date": "2013-10-04T22:00:00Z",
+        "matchday": 10,
+        "homeTeamName": "Nimes Olympique",
+        "awayTeamName": "SM Caen",
+        "result": {
+            "goalsHomeTeam": 2,
+            "goalsAwayTeam": 1
+        }
+    },
+    "head2head": {
+        "count": 10,
+        "timeFrameStart": "2014-05-12T22:00:00Z",
+        "timeFrameEnd": "2000-09-29T22:00:00Z",
+        "homeTeamWins": 1,
+        "awayTeamWins": 5,
+        "draws": 4,
+        "lastHomeWinHomeTeam": { },
+        "lastWinHomeTeam": { },
+        "lastAwayWinAwayTeam": { },
+        "lastWinAwayTeam": { },
+        "fixtures": [ ]
+    }
+}
+The response contains links to itself, the soccerseason the match is played in and the participating teams. The basic data is followed by a head2head node (omitted in list representation), that I abbreviated for convenience. You can control the number of compared games for head2head by setting the head2head Filter. However, notice that only the last 10 games are printed in detail no matter how many games go in the aggregated data above. Last but not least, results of games with no result data yet, displays -1 goals for each team.+
+
+The list view can be filtered by timeFrame. If omitted the timeFrame defaults to 7 days, which you can verify by the given keys timeFrameStart and timeFrameEnd in the response.
+
+CORS handling
+
+CORS (Cross-Origin-Resource-Sharing) describes a security mechanism of browsers to prevent malicious code from different servers than the original page was served from to execute. There is an excellent article on SpringSource explaining CORS, so there’s no need to describe that further at this point. However, if you implement requests directly from Javascript, you need to add your Authentication-Token correctly, so the API gives you permission to do that. The basic workflow is like so:
+
+Before your implemented Ajax-Request takes place, your browser will automatically fire somethink like that:
+
+OPTIONS http://api.football-data.org/alpha/soccerseason/355/leagueTable
+So that is your intentionally implemented request but not fired with GET but with the OPTIONS method. The API will respond with
+
+204 No Content
+response indicating there is no message body but also return the headers that are allowed. It reads as follows:
+
+Access-Control-Allow-Methods "GET";
+Access-Control-Allow-Origin "*";
+Access-Control-Allow-Headers "auth-token";
+Content-Length 0;
+Content-Type text/plain;
+Your browser now interprets this as I am allowed to make that intended request, go on and fires the same request again with the GET method and you will receive your desired response.
+
+Errors
+
+If something goes wrong, you will likely face one of the following HTTP error codes. If the error is caused by the client, the API will try to give you a hint with a small JSON encoded error message that could look like this:
+
+{
+  "error": "Parameter 'id' is expected to be an integer in a specific range."
+}
+HTTP error codes returned
+400 Bad Request
+
+Your request was malformed, most likely the value of a Filter was not set according to the Data Type that is expected.
+
+403 Restricted Resource
+
+You tried to access a resource that exists but is not available for you. This can be out of the following reasons:
+
+the resource is only available to authenticated clients.
+
+the resource is not available in the API version you are using.
+
+404 Not Found
+
+You tried to access a resource that doesn’t exist.
+
+429 Too Many Requests
+
+You exceeded your allowed requests per minute/day, depending on API version and your user status. Look at "Other Conventions" for more information.
+
+Appendix
+
+Table of League-Codes
+Table 1. League-Codes used in Soccerseason resource
+League-Code	Country	League
+BL1
+
+Germany
+
+1. Bundesliga
+
+BL2
+
+Germany
+
+2. Bundesliga
+
+BL3
+
+Germany
+
+3. Bundesliga
+
+PL
+
+England
+
+Premiere League
+
+EL1
+
+England
+
+League One
+
+SA
+
+Italy
+
+Serie A
+
+SB
+
+Italy
+
+Serie B
+
+PD
+
+Spain
+
+Primera Division
+
+SD
+
+Spain
+
+Segunda Division
+
+FL1
+
+France
+
+Ligue 1
+
+FL2
+
+France
+
+Ligue 2
+
+DED
+
+Netherlands
+
+Eredivisie
+
+PPL
+
+Portugal
+
+Primeira Liga
+
+GSL
+
+Greece
+
+Super League
+
+CL
+
+Europe
+
+Champions-League
+
+EL
+
+Europe
+
+UEFA-Cup
+
+EC
+
+Europe
+
+European-Cup of Nations
+
+WC
+
+World
+
+World-Cup
+
+Last updated 2015-03-08 08:44:35 CEST
