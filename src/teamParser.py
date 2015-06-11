@@ -37,6 +37,14 @@ class TeamParser:
 
         print(playerStr + '\n')
 
+    def printRoster(self):
+        count = 0
+        print ('Roster: ')
+        for player in self.playerList:
+            print ('\t' + self.playerList[count].name)
+            count += 1
+        print
+
     # done
     def setPlayerData(self):
         players = self.players[u'players']
@@ -85,6 +93,7 @@ class TeamParser:
                    '******    Players on Roster: ' + str(self.playerCount) + \
                    '    ******\n*****************************************\n'
         print (titleStr)
+        self.printRoster()
         self.printPlayers2()
         endStr = '*****************************************\n'
         print (endStr)
